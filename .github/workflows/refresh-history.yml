@@ -35,15 +35,13 @@ jobs:
             git commit -m "Refresh lottery history"
             git push
           fi
-      - name: Prepare static site
+      - name: Request branch-based Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p site
-          cp index.html history.json site/
-          cp *-last24.csv site/
-          touch site/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - name: Publish
-        id: deployment
-        uses: actions/deploy-pages@v4
+          node --input-type=module <<'NODE'
+          const url=process.env.GITHUB_API_URL+'/repos/'+process.env.GITHUB_REPOSITORY+'/pages/builds';
+          const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});
+          if(!r.ok)throw new Error('Pages build request failed: '+r.status+' '+await r.text());
+          console.log('Pages build requested successfully');
+          NODE
