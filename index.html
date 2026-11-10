@@ -5,7 +5,7 @@ nav{flex-wrap:wrap}.position{overflow-x:auto}.position table{width:100%;border-c
 
 
 const provisionalRules={
- '7':{hotMin:2,hotMax:4,pairMax:2,oddMin:2,oddMax:5,cut:18,lowMin:2,lowMax:5}
+ '7':{hotMin:2,hotMax:4,pairCount:1,oddMin:2,oddMax:5,cut:18,lowMin:2,lowMax:5}
 };
 const fixedCarry={'5':2,'6':1,'7':2};
 function frequencyWindow(key){return key==='5'?5:key==='6'||key==='7'?10:24}
@@ -19,7 +19,7 @@ function assessProvisional(key,values,freq,last){
  const r=provisionalRules[key],a=[...values].sort((x,y)=>x-y),hot=a.map((n,p)=>p).filter(p=>isFrequencyCandidate(key,freq[a[p]])),carry=a.map((n,p)=>p).filter(p=>last.includes(a[p])),pairs=[];
  for(let p=0;p<a.length-1;p++)if(a[p+1]===a[p]+1)pairs.push(p);
  const odd=a.filter(n=>n%2).length,low=a.filter(n=>n<=r.cut).length,sum=a.reduce((s,n)=>s+n,0);
- const frequencyOK=hot.length>=r.hotMin&&hot.length<=r.hotMax,carryOK=carry.length===fixedCarry[key],pairOK=pairs.length<=r.pairMax,oddOK=odd>=r.oddMin&&odd<=r.oddMax,lowOK=low>=r.lowMin&&low<=r.lowMax,balanceOK=oddOK&&lowOK;
+ const frequencyOK=hot.length>=r.hotMin&&hot.length<=r.hotMax,carryOK=carry.length===fixedCarry[key],pairOK=pairs.length===r.pairCount,oddOK=odd>=r.oddMin&&odd<=r.oddMax,lowOK=low>=r.lowMin&&low<=r.lowMax,balanceOK=oddOK&&lowOK;
  return {match:frequencyOK&&carryOK&&pairOK&&balanceOK,frequencyOK,carryOK,pairOK,balanceOK,oddOK,lowOK,odd,low,sum,hotCount:hot.length,carryCount:carry.length,pairCount:pairs.length,values:a,hot,carry,pairs};
 }
 function assessProvisionalHistory(key,target,prior){return assessProvisional(key,target,countFrequencies(key,prior),prior[0])}
@@ -36,7 +36,7 @@ function generateProvisionalCandidates(key,freq,last,wanted){
 function ticketPairLabel(t){const pairs=t.pairs||(t.pair?.length?[t.pair]:[]);return pairs.length?pairs.map(p=>p.join('–')).join(' / '):'なし'}
 function setProvisionalRules(){
  const r=provisionalRules[mode];$('rulesTitle').textContent=r?games[mode].name+'の暫定5条件':'3つの選択ルール';if(!r)return;
- $('rules').innerHTML='<li>直前'+frequencyWindow(mode)+'回に<strong>一度も出なかった</strong>本数字を<strong>'+r.hotMin+'〜'+r.hotMax+'個</strong></li><li>前回の本数字を<strong>ちょうど'+fixedCarry[mode]+'個</strong></li><li>連続ペアは<strong>0〜'+r.pairMax+'組</strong>。前回数字から作る条件なし'+(mode==='7'?'（3連続は2組として許容）':'')+'</li><li>奇数を<strong>'+r.oddMin+'〜'+r.oddMax+'個</strong></li><li>1〜'+r.cut+'の数字を<strong>'+r.lowMin+'〜'+r.lowMax+'個</strong></li>';
+ $('rules').innerHTML='<li>直前'+frequencyWindow(mode)+'回に<strong>一度も出なかった</strong>本数字を<strong>'+r.hotMin+'〜'+r.hotMax+'個</strong></li><li>前回の本数字を<strong>ちょうど'+fixedCarry[mode]+'個</strong></li><li>連続ペアは<strong>ちょうど'+r.pairCount+'組</strong>。3連続は2組として数えます。前回数字から作る条件なし</li><li>奇数を<strong>'+r.oddMin+'〜'+r.oddMax+'個</strong></li><li>1〜'+r.cut+'の数字を<strong>'+r.lowMin+'〜'+r.lowMax+'個</strong></li>';
  $('ruleNote').textContent='頻度の集計には、読み込んだ24回のうち最新10回を使います。合計値の範囲による除外は行わず、合計は参考表示のみです。頻度・前回一致・連続ペア・奇偶・大小の全条件を満たします。過去の一致率は予測実績ではありません。';
 }
 function syncProvisionalBacktest(){
@@ -44,7 +44,7 @@ function syncProvisionalBacktest(){
  else if($('btRepeat').disabled){$('btRepeat').disabled=false;$('btRepeat').innerHTML='<option value="any">1〜2個／桁</option><option value="1">1個／桁</option><option value="2">2個／桁</option>'}
 }
 function exportProvisionalBacktest(){
- const csv='\ufeff'+['種類,ルール,回号,抽せん日,当せん番号,頻度条件,前回一致条件,連続ペア条件,奇数条件,大小条件,合計（参考・判定対象外）,全条件一致,分析開始回,分析終了回'+prizeHeaders(btMode).map(h=>','+h).join('')+(games[btMode].digits?'':',候補総数（口）,当せん割合'),...btResults.map(r=>[games[btMode].name,'暫定5条件・直前10回で未出現の本数字を2〜4個・前回本数字を2個',r.round,r.date,r.values.join(' '),r.frequencyOK,r.carryOK,r.pairOK,r.oddOK,r.lowOK,r.sum,r.match,r.trainingFrom,r.trainingTo,...(r.prizeCounts??prizeHeaders(btMode).map(()=>'未集計')),...(games[btMode].digits?[]:[r.candidateCount,historicalWinRate(r)])].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\r\n');
+ const csv='\ufeff'+['種類,ルール,回号,抽せん日,当せん番号,頻度条件,前回一致条件,連続ペア条件,奇数条件,大小条件,合計（参考・判定対象外）,全条件一致,分析開始回,分析終了回'+prizeHeaders(btMode).map(h=>','+h).join('')+(games[btMode].digits?'':',候補総数（口）,当せん割合'),...btResults.map(r=>[games[btMode].name,'暫定5条件・直前10回で未出現の本数字を2〜4個・前回本数字を2個・連番1組',r.round,r.date,r.values.join(' '),r.frequencyOK,r.carryOK,r.pairOK,r.oddOK,r.lowOK,r.sum,r.match,r.trainingFrom,r.trainingTo,...(r.prizeCounts??prizeHeaders(btMode).map(()=>'未集計')),...(games[btMode].digits?[]:[r.candidateCount,historicalWinRate(r)])].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\r\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=btMode+'-provisional-rule-check.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
@@ -147,7 +147,7 @@ function countPrizeTickets(key,draw,prior,repeats){
  const counts=Array(prizeTiers[key]).fill(0);
  const carryMin=fixedCarry[key];
  const carryMax=carryMin;
- const hotMin=rule?.hotMin??3,hotMax=rule?.hotMax??3,pairMax=rule?.pairMax??1;
+ const hotMin=rule?.hotMin??3,hotMax=rule?.hotMax??3,pairMax=rule?.pairCount??1;
 
  // Split each ticket into main matches and other numbers to visit it only once.
  function choose(pool,start,left,otherCount,main,hot,carry,pairs,anchored,bonus,odd,low){
@@ -157,10 +157,10 @@ function countPrizeTickets(key,draw,prior,repeats){
     choose(other,0,otherCount,0,main,hot,carry,pairs,anchored,bonus,odd,low);
     return;
    }
-   if(hot<hotMin||carry<carryMin)return;
+   if(hot<hotMin||carry<carryMin||pairs!==pairMax)return;
    if(rule){
     if(odd<rule.oddMin||odd>rule.oddMax||low<rule.lowMin||low>rule.lowMax)return;
-   }else if(pairs!==1||!anchored)return;
+   }else if(!anchored)return;
    const tier=lotteryPrizeTier(key,main,bonus);
    if(tier)counts[tier-1]++;
    return;
@@ -188,12 +188,12 @@ function countAllTickets(key,prior,repeats){
  const hotMin=rule?.hotMin??3,hotMax=rule?.hotMax??3;
  const carryMin=fixedCarry[key];
  const carryMax=carryMin;
- const pairMax=rule?.pairMax??1,memo=new Map();
+ const pairMax=rule?.pairCount??1,memo=new Map();
 
  function count(n,left,h,c,p,previous,anchored,odd,low){
   if(h>hotMax||h+left<hotMin||c>carryMax||c+left<carryMin||p>pairMax)return 0;
   if(rule&&(odd>rule.oddMax||odd+left<rule.oddMin||low>rule.lowMax||low+left<rule.lowMin))return 0;
-  if(!left)return (rule||(p===1&&anchored))?1:0;
+  if(!left)return p===pairMax&&(rule||anchored)?1:0;
   if(n+left-1>max)return 0;
   // Each counter fits in one octal digit; the final two fields are booleans.
   const state=((((((n*8+left)*8+h)*8+c)*8+p)*8+odd)*8+low)*4+previous*2+(anchored?1:0);
