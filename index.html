@@ -5,7 +5,7 @@ nav{flex-wrap:wrap}.position{overflow-x:auto}.position table{width:100%;border-c
 
 
 const provisionalRules={
- '7':{hotMin:2,hotMax:4,pairCount:1,oddMin:2,oddMax:2,cut:18,lowMin:2,lowMax:5}
+ '7':{hotMin:2,hotMax:4,pairCount:1,oddMin:2,oddMax:2,cut:18,lowMin:5,lowMax:5}
 };
 const fixedCarry={'5':2,'6':1,'7':2};
 function frequencyWindow(key){return key==='5'?5:key==='6'||key==='7'?10:24}
@@ -36,7 +36,7 @@ function generateProvisionalCandidates(key,freq,last,wanted){
 function ticketPairLabel(t){const pairs=t.pairs||(t.pair?.length?[t.pair]:[]);return pairs.length?pairs.map(p=>p.join('–')).join(' / '):'なし'}
 function setProvisionalRules(){
  const r=provisionalRules[mode];$('rulesTitle').textContent=r?games[mode].name+'の暫定5条件':'3つの選択ルール';if(!r)return;
- $('rules').innerHTML='<li>直前'+frequencyWindow(mode)+'回に<strong>一度も出なかった</strong>本数字を<strong>'+r.hotMin+'〜'+r.hotMax+'個</strong></li><li>前回の本数字を<strong>ちょうど'+fixedCarry[mode]+'個</strong></li><li>連続ペアは<strong>ちょうど'+r.pairCount+'組</strong>。3連続は2組として数えます。前回数字から作る条件なし</li><li>奇数を<strong>ちょうど'+r.oddMin+'個</strong></li><li>1〜'+r.cut+'の数字を<strong>'+r.lowMin+'〜'+r.lowMax+'個</strong></li>';
+ $('rules').innerHTML='<li>直前'+frequencyWindow(mode)+'回に<strong>一度も出なかった</strong>本数字を<strong>'+r.hotMin+'〜'+r.hotMax+'個</strong></li><li>前回の本数字を<strong>ちょうど'+fixedCarry[mode]+'個</strong></li><li>連続ペアは<strong>ちょうど'+r.pairCount+'組</strong>。3連続は2組として数えます。前回数字から作る条件なし</li><li>奇数を<strong>ちょうど'+r.oddMin+'個</strong></li><li>1〜'+r.cut+'の数字を<strong>ちょうど'+r.lowMin+'個</strong></li>';
  $('ruleNote').textContent='頻度の集計には、読み込んだ24回のうち最新10回を使います。合計値の範囲による除外は行わず、合計は参考表示のみです。頻度・前回一致・連続ペア・奇偶・大小の全条件を満たします。過去の一致率は予測実績ではありません。';
 }
 function syncProvisionalBacktest(){
@@ -44,7 +44,7 @@ function syncProvisionalBacktest(){
  else if($('btRepeat').disabled){$('btRepeat').disabled=false;$('btRepeat').innerHTML='<option value="any">1〜2個／桁</option><option value="1">1個／桁</option><option value="2">2個／桁</option>'}
 }
 function exportProvisionalBacktest(){
- const csv='\ufeff'+['種類,ルール,回号,抽せん日,当せん番号,頻度条件,前回一致条件,連続ペア条件,奇数条件,大小条件,合計（参考・判定対象外）,全条件一致,分析開始回,分析終了回'+prizeHeaders(btMode).map(h=>','+h).join('')+(games[btMode].digits?'':',候補総数（口）,当せん割合'),...btResults.map(r=>[games[btMode].name,'暫定5条件・直前10回で未出現の本数字を2〜4個・前回本数字を2個・連番1組・奇数2個',r.round,r.date,r.values.join(' '),r.frequencyOK,r.carryOK,r.pairOK,r.oddOK,r.lowOK,r.sum,r.match,r.trainingFrom,r.trainingTo,...(r.prizeCounts??prizeHeaders(btMode).map(()=>'未集計')),...(games[btMode].digits?[]:[r.candidateCount,historicalWinRate(r)])].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\r\n');
+ const csv='\ufeff'+['種類,ルール,回号,抽せん日,当せん番号,頻度条件,前回一致条件,連続ペア条件,奇数条件,大小条件,合計（参考・判定対象外）,全条件一致,分析開始回,分析終了回'+prizeHeaders(btMode).map(h=>','+h).join('')+(games[btMode].digits?'':',候補総数（口）,当せん割合'),...btResults.map(r=>[games[btMode].name,'暫定5条件・直前10回で未出現の本数字を2〜4個・前回本数字を2個・連番1組・奇数2個・1〜18を5個',r.round,r.date,r.values.join(' '),r.frequencyOK,r.carryOK,r.pairOK,r.oddOK,r.lowOK,r.sum,r.match,r.trainingFrom,r.trainingTo,...(r.prizeCounts??prizeHeaders(btMode).map(()=>'未集計')),...(games[btMode].digits?[]:[r.candidateCount,historicalWinRate(r)])].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\r\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=btMode+'-provisional-rule-check.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
