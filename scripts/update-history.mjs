@@ -14,7 +14,16 @@ export function parseHistory(page,key,slug,k,limit,today,maxRows=24){
   if(!key.startsWith('n'))assert.equal(new Set(numbers).size,k,'Duplicate main number');
   const date=d[1]+'-'+d[2].padStart(2,'0')+'-'+d[3].padStart(2,'0');
   assert(date<=today,'Future draw');
-  rows.push({round:Number(r[1]),date,numbers});
+  const result={round:Number(r[1]),date,numbers};
+  if(!key.startsWith('n')){
+   const b=row.match(/ボーナス数字 ([\d ]+)"/)||row.match(/（B ([\d ]+)）/);
+   assert(b,'Missing bonus numbers for '+slug+' round '+r[1]);
+   const bonus=b[1].trim().split(/\s+/).map(Number);
+   assert.equal(bonus.length,key==='7'?2:1,'Wrong bonus number count');
+   assert(bonus.every(x=>Number.isInteger(x)&&x>=1&&x<=limit&&!numbers.includes(x))&&new Set(bonus).size===bonus.length,'Invalid bonus numbers');
+   result.bonus=bonus.sort((a,b)=>a-b);
+  }
+  rows.push(result);
  }
  rows.sort((a,b)=>b.round-a.round);const latest=rows.slice(0,maxRows);assert(latest.length>=Math.min(maxRows,25),'Insufficient history');
  for(let i=1;i<latest.length;i++){assert.equal(latest[i-1].round-latest[i].round,1,'Missing or duplicate round');assert(latest[i-1].date>latest[i].date,'Non-descending draw dates')}
@@ -23,7 +32,7 @@ export function parseHistory(page,key,slug,k,limit,today,maxRows=24){
 export function guardRegression(rows,old){
  if(!old?.rows?.length)return;
  assert(rows[0].round>=old.rows[0].round,'Refusing older dataset');
- for(const row of rows){const existing=old.rows.find(r=>r.round===row.round);if(existing)assert.deepEqual(row,existing,'Conflicting result for known round '+row.round)}
+ for(const row of rows){const existing=old.rows.find(r=>r.round===row.round);if(existing){const {bonus,...main}=row;assert.deepEqual(existing.bonus?row:main,existing,'Conflicting result for known round '+row.round)}}
 }
 export async function update(root,fixtureDir){
  const file=path.join(root,'index.html'),html=await fs.readFile(file,'utf8'),match=html.match(/const collectedHistory=([\s\S]*?);<\/script>/);
@@ -34,7 +43,7 @@ export async function update(root,fixtureDir){
   let page;if(fixtureDir)page=await fs.readFile(path.join(fixtureDir,slug+'-latest.html'),'utf8');
   else{const res=await fetch(url,{signal:AbortSignal.timeout(30000),headers:{'User-Agent':'LotoStudio/1.0 (public lottery history refresh)'}});assert(res.ok,'HTTP '+res.status+' for '+slug);page=await res.text()}
   const rows=parseHistory(page,key,slug,k,limit,today,200);guardRegression(rows,old[key]);
-  archive[key]={source:url,collectedAt:checkedAt,rows};data[key]={source:url,collectedAt:checkedAt,rows:rows.slice(0,24)};console.log(key,rows[0].round,rows[0].date,rows[0].numbers.join(key.startsWith('n')?'':','));
+  archive[key]={source:url,collectedAt:checkedAt,rows};data[key]={source:url,collectedAt:checkedAt,rows:rows.slice(0,24).map(({bonus,...main})=>main)};console.log(key,rows[0].round,rows[0].date,rows[0].numbers.join(key.startsWith('n')?'':','));
  }
  await fs.writeFile(path.join(root,'backtest-history.json'),JSON.stringify(archive)+'\n');
  const json=JSON.stringify(data),tag='<script id="history-data">const collectedHistory='+json+';</script>';
